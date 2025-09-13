@@ -6,7 +6,6 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
 )
@@ -99,11 +98,10 @@ func main() {
 	r.Use(cors.New(config))
 
 	// Serve static files from public directory
-	r.Use(static.Serve("/", static.LocalFile("./public", false)))
+	r.Static("/public", "./public")
 
-	// Socket.IO endpoint
-	r.GET("/socket.io/", gin.WrapH(server))
-	r.POST("/socket.io/", gin.WrapH(server))
+	// Socket.IO endpoint - handle all socket.io paths
+	r.Any("/socket.io/*any", gin.WrapH(server))
 
 	// Root route - serve index.html
 	r.GET("/", func(c *gin.Context) {
