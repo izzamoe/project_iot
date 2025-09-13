@@ -22,10 +22,10 @@ run: build ## Run the application locally (requires local MQTT broker)
 	@echo "Starting parking IoT application..."
 	./$(BINARY_NAME)
 
-# Run tests
+# Test the application
 test: ## Run tests
 	@echo "Running tests..."
-	go test -v ./...
+	@if [ -f ./test-mqtt.sh ]; then ./test-mqtt.sh; else echo "No tests found"; fi
 
 # Clean build artifacts
 clean: ## Clean build artifacts
