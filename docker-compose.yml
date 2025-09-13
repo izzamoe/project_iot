@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  parking-app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - GIN_MODE=release
+      - MQTT_BROKER_HOST=mosquitto
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+    networks:
+      - parking-network
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+    networks:
+      - parking-network
+
+networks:
+  parking-network:
+    driver: bridge
