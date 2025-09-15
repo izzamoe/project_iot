@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: parking-mqtt-broker
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      - parking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/broker/uptime' -C 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Rust Parking IoT Application
+  parking-iot-rust:
+    build:
+      context: .
+      dockerfile: Dockerfile.rust
+    container_name: parking-iot-rust-app
+    ports:
+      - "3000:3000"
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - RUST_LOG=info
+    command: ["./parking-iot-rust", "--mqtt-host", "mosquitto"]
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    networks:
+      - parking-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  parking-network:
+    driver: bridge
+    name: parking-iot-network
+
+volumes:
+  mosquitto-data:
+    name: parking-mosquitto-data
