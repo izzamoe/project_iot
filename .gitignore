@@ -182,6 +182,7 @@ dist
 
 # Go build artifacts
 parking-iot
+parking-iot-go
 *.exe
 *.exe~
 *.dll
@@ -202,4 +203,10 @@ data/
 # Development files
 tmp/
 logs/
+
+# Rust build artifacts
+target/
+Cargo.lock
+*.rlib
+*.pdb
 

@@ -1,0 +1,55 @@
+# Multi-stage Dockerfile for Rust Parking IoT Application
+FROM rust:1.75-alpine AS builder
+
+# Install dependencies
+RUN apk add --no-cache musl-dev openssl-dev pkgconfig
+
+# Set working directory
+WORKDIR /app
+
+# Copy Cargo files
+COPY Cargo.toml Cargo.lock ./
+
+# Create a dummy main.rs to cache dependencies
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+
+# Build dependencies (this layer will be cached)
+RUN cargo build --release
+RUN rm src/main.rs
+
+# Copy source code
+COPY src ./src
+
+# Build the application
+RUN touch src/main.rs && cargo build --release
+
+# Production stage
+FROM alpine:3.18
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates
+
+# Create non-root user
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
+
+# Set working directory
+WORKDIR /app
+
+# Copy the binary from builder stage
+COPY --from=builder /app/target/release/parking-iot-rust /app/
+COPY --chown=appuser:appgroup index.html index.js ./
+COPY --chown=appuser:appgroup public ./public/
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Run the application
+CMD ["./parking-iot-rust"]
