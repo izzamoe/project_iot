@@ -78,6 +78,23 @@ check: ## Check Go environment and dependencies
 	@echo ""
 	@echo "Go environment:"
 	go env
+
+# Memory usage benchmark
+benchmark: ## Compare memory usage between Node.js and Go implementations
+	@echo "Running memory usage benchmark..."
+	./benchmark-memory.sh
+
+# Memory comparison analysis
+memory-report: ## Generate detailed memory usage comparison report
+	@echo "Memory Usage Comparison Report"
+	@echo "=============================="
+	@echo ""
+	@echo "📋 Quick Stats:"
+	@echo "  Go Binary Size: $$(du -sh parking-iot-go 2>/dev/null | cut -f1 || echo 'Not built')"
+	@echo "  Node Dependencies: $$(du -sh node_modules 2>/dev/null | cut -f1 || echo 'Not installed')"
+	@echo ""
+	@echo "🚀 Run benchmark: make benchmark"
+	@echo "📖 Full analysis: cat MEMORY_COMPARISON.md"
 	@echo ""
 	@echo "Dependencies:"
 	go mod tidy
