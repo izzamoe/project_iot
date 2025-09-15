@@ -210,3 +210,18 @@ Cargo.lock
 *.rlib
 *.pdb
 
+# Stress testing and performance results
+stress-test-results/
+load-test-scenarios/
+memory-profiling-results/
+performance-comparison/
+test-logs/
+test-artifacts/
+test-results/
+test-config.env
+
+# Test output files
+*.csv
+*.json
+*.txt
+

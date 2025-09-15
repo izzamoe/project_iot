@@ -145,3 +145,249 @@ memory-report: ## Generate detailed memory usage comparison report
 	@echo "Dependencies:"
 	go mod tidy
 	go list -m all
+
+# === STRESS TESTING SUITE ===
+
+# Comprehensive stress testing for all implementations
+stress-test: ## Run comprehensive stress testing suite (all implementations)
+	@echo "🚀 Starting comprehensive stress testing suite..."
+	./stress-test.sh all quick
+
+# Stress test specific implementation
+stress-test-nodejs: ## Run stress test for Node.js implementation only
+	@echo "🟨 Testing Node.js implementation..."
+	./stress-test.sh nodejs quick
+
+stress-test-go: ## Run stress test for Go implementation only  
+	@echo "🟦 Testing Go implementation..."
+	./stress-test.sh go quick
+
+stress-test-rust: ## Run stress test for Rust implementation only
+	@echo "🟧 Testing Rust implementation..."
+	./stress-test.sh rust quick
+
+# Full stress testing (longer duration, more load levels)
+stress-test-full: ## Run full comprehensive stress testing (extended duration)
+	@echo "🔥 Starting full stress testing suite (extended)..."
+	./stress-test.sh all full
+
+# Load testing scenarios
+load-test-scenarios: ## Run realistic load testing scenarios
+	@echo "📈 Running load testing scenarios..."
+	@echo "Available scenarios: iot, spike, endurance, connection, websocket, all"
+	@echo "Usage: make load-test-scenarios IMPL=<nodejs|go|rust> SCENARIO=<scenario>"
+	@echo "Example: make load-test-scenarios IMPL=rust SCENARIO=iot"
+
+load-test-iot: ## Run IoT device simulation scenario
+	./load-test-scenarios.sh $(or $(IMPL),rust) iot
+
+load-test-spike: ## Run traffic spike testing scenario
+	./load-test-scenarios.sh $(or $(IMPL),rust) spike
+
+load-test-endurance: ## Run long-running endurance testing
+	./load-test-scenarios.sh $(or $(IMPL),rust) endurance
+
+load-test-websocket: ## Run WebSocket stress testing
+	./load-test-scenarios.sh $(or $(IMPL),rust) websocket
+
+# Memory profiling
+memory-profile: ## Run advanced memory profiling
+	@echo "🧠 Running memory profiling..."
+	@echo "Usage: make memory-profile IMPL=<nodejs|go|rust> DURATION=<seconds>"
+	@echo "Example: make memory-profile IMPL=rust DURATION=600"
+
+memory-profile-nodejs: ## Profile Node.js memory usage
+	./memory-profiling.sh nodejs 300
+
+memory-profile-go: ## Profile Go memory usage
+	./memory-profiling.sh go 300
+
+memory-profile-rust: ## Profile Rust memory usage
+	./memory-profiling.sh rust 300
+
+memory-profile-all: ## Profile all implementations memory usage
+	@echo "🧠 Profiling all implementations..."
+	./memory-profiling.sh nodejs 300
+	./memory-profiling.sh go 300
+	./memory-profiling.sh rust 300
+
+# Performance comparison
+performance-comparison: ## Run automated performance comparison of all implementations
+	@echo "⚡ Running comprehensive performance comparison..."
+	./performance-comparison.sh
+
+# Quick performance test
+quick-benchmark: ## Quick performance benchmark (subset of full comparison)
+	@echo "⚡ Running quick performance benchmark..."
+	@./stress-test.sh all quick
+	@echo ""
+	@echo "📊 For detailed comparison run: make performance-comparison"
+
+# === TESTING UTILITIES ===
+
+# Check testing prerequisites  
+check-test-deps: ## Check if all testing dependencies are installed
+	@echo "🔍 Checking testing dependencies..."
+	@command -v wrk >/dev/null 2>&1 || (echo "❌ wrk not found. Install: apt-get install wrk" && exit 1)
+	@command -v curl >/dev/null 2>&1 || (echo "❌ curl not found" && exit 1)
+	@command -v jq >/dev/null 2>&1 || (echo "❌ jq not found. Install: apt-get install jq" && exit 1)
+	@command -v docker >/dev/null 2>&1 || (echo "❌ docker not found" && exit 1)
+	@command -v bc >/dev/null 2>&1 || (echo "❌ bc not found. Install: apt-get install bc" && exit 1)
+	@command -v python3 >/dev/null 2>&1 || echo "⚠️  python3 not found (optional for MQTT testing)"
+	@echo "✅ All required dependencies are available"
+
+# Install testing dependencies (Ubuntu/Debian)
+install-test-deps: ## Install testing dependencies (Ubuntu/Debian)
+	@echo "📦 Installing testing dependencies..."
+	sudo apt-get update
+	sudo apt-get install -y wrk curl jq bc python3 python3-pip
+	pip3 install paho-mqtt requests
+
+# Start all implementations for testing
+start-all: ## Start all implementations for manual testing
+	@echo "🚀 Starting all implementations..."
+	@echo "Starting MQTT broker..."
+	@docker run -d --name mosquitto-test -p 1883:1883 eclipse-mosquitto:latest >/dev/null 2>&1 || echo "MQTT broker already running"
+	@echo "Building applications..."
+	@make build >/dev/null 2>&1
+	@make rust-build >/dev/null 2>&1
+	@echo "Starting implementations on different ports..."
+	@echo "Node.js will be on port 3001, Go on 3002, Rust on 3003"
+	@PORT=3001 node index.js > /tmp/nodejs_test.log 2>&1 & echo $$! > /tmp/nodejs_test.pid
+	@PORT=3002 /tmp/parking-iot > /tmp/go_test.log 2>&1 & echo $$! > /tmp/go_test.pid  
+	@./target/release/parking-iot-rust --port 3003 > /tmp/rust_test.log 2>&1 & echo $$! > /tmp/rust_test.pid
+	@sleep 5
+	@echo "✅ All implementations started"
+	@echo "  Node.js: http://localhost:3001"
+	@echo "  Go:      http://localhost:3002" 
+	@echo "  Rust:    http://localhost:3003"
+
+# Stop all test implementations
+stop-all: ## Stop all running test implementations
+	@echo "🛑 Stopping all test implementations..."
+	@kill $$(cat /tmp/nodejs_test.pid 2>/dev/null) 2>/dev/null || true
+	@kill $$(cat /tmp/go_test.pid 2>/dev/null) 2>/dev/null || true
+	@kill $$(cat /tmp/rust_test.pid 2>/dev/null) 2>/dev/null || true
+	@docker stop mosquitto-test >/dev/null 2>&1 || true
+	@docker rm mosquitto-test >/dev/null 2>&1 || true
+	@rm -f /tmp/*_test.pid /tmp/*_test.log
+	@echo "✅ All implementations stopped"
+
+# Generate testing documentation
+test-docs: ## Generate comprehensive testing documentation
+	@echo "📚 Generating testing documentation..."
+	@cat > TESTING.md << 'EOF'
+# Comprehensive Testing Guide for Parking IoT
+
+This document provides detailed information about the extensive testing suite available for the Parking IoT project.
+
+## Available Testing Scripts
+
+### 1. Comprehensive Stress Testing (\`stress-test.sh\`)
+**Purpose**: Complete performance testing with multiple load levels
+**Usage**:
+\`\`\`bash
+./stress-test.sh [nodejs|go|rust|all] [quick|full]
+make stress-test              # Test all implementations (quick)
+make stress-test-full         # Extended testing
+make stress-test-rust         # Test Rust only
+\`\`\`
+
+### 2. Load Testing Scenarios (\`load-test-scenarios.sh\`)
+**Purpose**: Realistic usage patterns and edge cases
+**Scenarios**:
+- IoT Device Simulation
+- Traffic Spike Testing  
+- Endurance Testing
+- Connection Limit Testing
+- WebSocket Stress Testing
+
+**Usage**:
+\`\`\`bash
+./load-test-scenarios.sh rust iot        # IoT simulation
+make load-test-spike IMPL=go            # Spike test for Go
+\`\`\`
+
+### 3. Memory Profiling (\`memory-profiling.sh\`)
+**Purpose**: Detailed memory usage analysis and leak detection
+**Usage**:
+\`\`\`bash
+./memory-profiling.sh rust 600          # Profile Rust for 10 minutes
+make memory-profile-all                 # Profile all implementations
+\`\`\`
+
+### 4. Performance Comparison (\`performance-comparison.sh\`)
+**Purpose**: Automated comparison with scoring and ranking
+**Usage**:
+\`\`\`bash
+./performance-comparison.sh             # Complete comparison
+make performance-comparison            # Same via Makefile
+\`\`\`
+
+## Quick Start
+
+1. **Install dependencies**:
+   \`\`\`bash
+   make install-test-deps    # Install wrk, jq, etc.
+   \`\`\`
+
+2. **Quick performance test**:
+   \`\`\`bash
+   make quick-benchmark      # Fast overview
+   \`\`\`
+
+3. **Full comparison**:
+   \`\`\`bash
+   make performance-comparison  # Comprehensive analysis
+   \`\`\`
+
+## Test Results
+
+All test results are saved in organized directories:
+- \`stress-test-results/\` - Stress testing data
+- \`load-test-scenarios/\` - Scenario testing results  
+- \`memory-profiling-results/\` - Memory analysis data
+- \`performance-comparison/\` - Comparison reports
+
+## Interpreting Results
+
+### Performance Metrics
+- **RPS**: Requests per second (higher is better)
+- **Latency**: Response time (lower is better)
+- **Memory**: RAM usage (lower is better)
+- **CPU**: Processor utilization
+- **Stability**: Error rate (lower is better)
+
+### Implementation Comparison
+- **Rust**: Best for memory efficiency and peak performance
+- **Go**: Good balance of performance and development velocity
+- **Node.js**: Good for rapid development, adequate performance
+
+## Continuous Integration
+
+The testing suite can be integrated into CI/CD pipelines:
+
+\`\`\`yaml
+# Example GitHub Actions
+- name: Run Performance Tests
+  run: |
+    make check-test-deps
+    make performance-comparison
+    
+- name: Upload Test Results
+  uses: actions/upload-artifact@v3
+  with:
+    name: performance-results
+    path: performance-comparison/
+\`\`\`
+
+## Contributing
+
+When adding new features:
+1. Run existing tests to ensure no regressions
+2. Add relevant test scenarios for new functionality
+3. Update documentation with any new testing procedures
+
+For questions or issues with testing, please open an issue in the repository.
+EOF
+	@echo "✅ Testing documentation generated: TESTING.md"
